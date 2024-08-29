@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Mapa de Rutas</title>
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body { margin: 0; padding: 0; }
+        html, body, #map { height: 100%; }
+        .distance-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            font-size: 14px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #stopButton { 
+            background-color: #dc3545; 
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .controls button {
+            display: block;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .controls button:hover {
+            background-color: #0056b3;
+        }
+        #search-input {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        #search-results {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            background-color: #fff;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+        #search-results div {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        #search-results div:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="distance" class="distance-container">
+    <div id="distanceValue">Distancia total: 0 km</div> 
+    <button id="stopButton" disabled>Finalizar cálculo</button>
+</div>
+
+<div class="controls">
+    <button id="zoomIn">Zoom In</button>
+    <button id="zoomOut">Zoom Out</button>
+    <button id="tiltUp">Tilt Up</button>
+    <button id="tiltDown">Tilt Down</button>
+    <button id="rotateLeft">Rotate Left</button>
+    <button id="rotateRight">Rotate Right</button>
+    <button id="undoButton" disabled>Deshacer último punto</button>
+</div>
+
+<input id="search-input" type="text" placeholder="Buscar localidad...">
+<div id="search-results"></div>
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1IjoiY2tueXQiLCJhIjoiY20wNDJ2NHUwMDJodDJxc2g4ZjNxbTh0NCJ9.zKJdloRXLKoWKa-1mq9iwA'; 
+var map = new mapboxgl.Map({ 
+    container: 'map', 
+    style: 'mapbox://styles/mapbox/streets-v12', 
+    center: [2.168, 41.381], 
+    zoom: 13
+}); 
+
+var points = [];
+var markers = [];
+var initialMarker;
+
+map.on('click', function(e) {
+    points.push([e.lngLat.lng, e.lngLat.lat]);
+
+    var marker = new mapboxgl.Marker()
+        .setLngLat([e.lngLat.lng, e.lngLat.lat])
+        .addTo(map);
+
+    markers.push(marker);
+
+    if (points.length > 1) {
+        calculateDistance();
+    }
+
+    if (points.length > 1) {
+        document.getElementById('stopButton').disabled = false;
+    }
+
+    document.getElementById('undoButton').disabled = false;
+});
+
+function calculateDistance() {
+    var url = 'https://api.mapbox.com/directions/v5/mapbox/walking/' + points.map(p => p.join(',')).join(';') + '?geometries=geojson&access_token=' + mapboxgl.accessToken;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            var route = data.routes[0];
+            var distance = route.distance / 1000;
+
+            document.getElementById('distanceValue').textContent = 'Distancia total: ' + distance.toFixed(2) + ' km';
+
+            if (map.getSource('route')) {
+                map.getSource('route').setData(route.geometry);
+            } else {
+                map.addLayer({
+                    id: 'route',
+                    type: 'line',
+                    source: {
+                        type: 'geojson',
+                        data: route.geometry
+                    },
+                    layout: {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-color': '#ff7e5f',
+                        'line-width': 4
+                    }
+                });
+            }
+        });
+}
+
+document.getElementById('stopButton').addEventListener('click', function() {
+    // Verifica que se haya calculado una distancia
+    var distanceText = document.getElementById('distanceValue').textContent;
+    var distanceMatch = distanceText.match(/(\d+(\.\d+)?) km/);
+    var distance = distanceMatch ? distanceMatch[1] : '0';
+
+    // Guardar la distancia total en localStorage
+    localStorage.setItem('distanciaTotal', distance);
+
+    // Reiniciar los puntos y limpiar el mapa
+    points = [];
+    markers.forEach(marker => marker.remove());
+    markers = [];
+    document.getElementById('distanceValue').textContent = 'Distancia total: 0 km';
+    document.getElementById('stopButton').disabled = true;
+    document.getElementById('undoButton').disabled = true;
+
+    if (map.getLayer('route')) {
+        map.removeLayer('route');
+        map.removeSource('route');
+    }
+
+    // Redirigir a la página inicial
+    window.location.href = 'index.html';
+});
+
+
+document.getElementById('undoButton').addEventListener('click', function() {
+    if (points.length > 0) {
+        points.pop();
+        var lastMarker = markers.pop();
+        lastMarker.remove();
+
+        if (points.length > 1) {
+            calculateDistance();
+        } else {
+            document.getElementById('distanceValue').textContent = 'Distancia total: 0 km';
+            document.getElementById('stopButton').disabled = true;
+            if (map.getLayer('route')) {
+                map.removeLayer('route');
+                map.removeSource('route');
+            }
+        }
+
+        if (points.length === 0) {
+            document.getElementById('undoButton').disabled = true;
+        }
+    }
+});
+
+document.getElementById('zoomIn').addEventListener('click', () => map.zoomIn());
+document.getElementById('zoomOut').addEventListener('click', () => map.zoomOut());
+document.getElementById('tiltUp').addEventListener('click', () => map.easeTo({ pitch: map.getPitch() + 10 }));
+document.getElementById('tiltDown').addEventListener('click', () => map.easeTo({ pitch: map.getPitch() - 10 }));
+document.getElementById('rotateLeft').addEventListener('click', () => map.rotateTo(map.getBearing() - 10));
+document.getElementById('rotateRight').addEventListener('click', () => map.rotateTo(map.getBearing() + 10));
+
+document.getElementById('search-input').addEventListener('input', function() {
+    var searchValue = this.value;
+    if (searchValue.length > 2) {
+        searchPlaces(searchValue);
+    }
+});
+
+function searchPlaces(searchValue) {
+    var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + searchValue + '.json?access_token=' + mapboxgl.accessToken;
+    fetch(url)
+    .then(response => response.json())
+    .then(data => {
+        var places = data.features;
+        var results = [];
+        places.forEach(place => {
+            results.push({
+                name: place.text,
+                lat: place.geometry.coordinates[1],
+                lng: place.geometry.coordinates[0]
+            });
+        });
+        showSearchResults(results);
+    });
+}
+
+function showSearchResults(results) {
+    var searchResults = document.getElementById('search-results');
+    searchResults.innerHTML = '';
+    results.forEach(result => {
+        var resultHTML = '<div>' + result.name + '</div>';
+        searchResults.appendChild(document.createElement('div')).innerHTML = resultHTML;
+    });
+    searchResults.style.display = 'block';
+}
+
+document.getElementById('search-results').addEventListener('click', function(event) {
+    var selectedResult = event.target.textContent;
+    var selectedPlace = results.find(result => result.name === selectedResult);
+    if (selectedPlace) {
+        map.flyTo({
+            center: [selectedPlace.lng, selectedPlace.lat],
+            zoom: 15
+        });
+    }
+    document.getElementById('search-results').style.display = 'none';
+    document.getElementById('search-input').value = '';
+});
+</script>
+
+</body>
+</html>
