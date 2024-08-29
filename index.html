@@ -1,166 +1,86 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Measure Distances by Roads</title>
-    <meta property="og:description" content="Click points on a map to create lines that measure distances along roads using Mapbox Directions API." />
-    <meta charset='utf-8'>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
-    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
-    <style>
-        body { margin: 0; padding: 0; }
-        html, body, #map { height: 100%; }
-        .distance-container {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 1;
-            background-color: rgba(0, 0, 0, 0.5);
-            color: #fff;
-            font-size: 14px;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        #stopButton { 
-            background-color: #dc3545; 
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .controls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 5px;
-        }
-        .controls button {
-            display: block;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .controls button:hover {
-            background-color: #0056b3;
-        }
-    </style>
+  <title>Registro de Actividad</title>
+  <style>
+    /* Estilos para la página */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    h1 {
+      font-size: 24px;
+    }
+    form {
+      margin-bottom: 20px;
+    }
+    input[type="number"],
+    input[type="file"] {
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
+  <h1>¿Cuántos kilómetros has recorrido hoy?</h1>
+  <form id="activityForm">
+    <input type="number" id="kilometros" placeholder="Introduce los kilómetros" required>
+    <input type="file" id="imagen" accept="image/*">
+    <input type="submit" value="Enviar">
+  </form>
+  <button onclick="location.href='mapa.html'">Ver mapa</button>
+    <!-- Miniatura del mapa centrada en España -->
+    <a href="mapa.html">
+        <img id="map-thumbnail" src="https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/longitude,latitude,zoom/600x400?access_token=pk.eyJ1IjoiY2tueXQiLCJhIjoiY20wNDJ2NHUwMDJodDJxc2g4ZjNxbTh0NCJ9.zKJdloRXLKoWKa-1mq9iwA" alt="Mapa de España">
+    </a>
+    <button onclick="history.back()">Volver a la página inicial</button>
 
-<div id="map"></div>
-<div id="distance" class="distance-container">
-    <div id="distanceValue">Distancia total: 0 km</div> 
-    <button id="stopButton" disabled>Finalizar cálculo</button>
-</div>
+    <script>
+        // Aquí puedes ajustar las coordenadas y el nivel de zoom para la miniatura
+        const longitude = -3.7038; // Longitud de España (centro aproximado)
+        const latitude = 40.4168; // Latitud de España (centro aproximado)
+        const zoom = 4; // Nivel de zoom
 
-<div class="controls">
-    <button id="zoomIn">Zoom In</button>
-    <button id="zoomOut">Zoom Out</button>
-    <button id="tiltUp">Tilt Up</button>
-    <button id="tiltDown">Tilt Down</button>
-    <button id="rotateLeft">Rotate Left</button>
-    <button id="rotateRight">Rotate Right</button>
-</div>
-
-<script>
-mapboxgl.accessToken = 'pk.eyJ1IjoiY2tueXQiLCJhIjoiY20wNDJ2NHUwMDJodDJxc2g4ZjNxbTh0NCJ9.zKJdloRXLKoWKa-1mq9iwA'; 
-var map = new mapboxgl.Map({ 
-    container: 'map', 
-    style: 'mapbox://styles/mapbox/streets-v12', 
-    center: [2.168, 41.381], 
-    zoom: 13
-}); 
-
-// Array para almacenar los puntos seleccionados
-var points = [];
-
-// Manejar clics en el mapa
-map.on('click', function(e) {
-    points.push([e.lngLat.lng, e.lngLat.lat]);
-
-    if (points.length > 1) {
-        calculateDistance();
-    }
-
-    // Añadir un marcador en el mapa
-    new mapboxgl.Marker()
-        .setLngLat([e.lngLat.lng, e.lngLat.lat])
-        .addTo(map);
-
-    // Activar botón de finalizar si hay más de un punto
-    if (points.length > 1) {
-        document.getElementById('stopButton').disabled = false;
-    }
-});
-
-// Función para calcular la distancia utilizando la API de direcciones de Mapbox
-function calculateDistance() {
-    var url = 'https://api.mapbox.com/directions/v5/mapbox/walking/' + points.map(p => p.join(',')).join(';') + '?geometries=geojson&access_token=' + mapboxgl.accessToken;
-
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            var route = data.routes[0];
-            var distance = route.distance / 1000; // Convertir a kilómetros
-
-            // Mostrar la distancia
-            document.getElementById('distanceValue').textContent = 'Distancia total: ' + distance.toFixed(2) + ' km';
-
-            // Dibujar la línea en el mapa
-            if (map.getSource('route')) {
-                map.getSource('route').setData(route.geometry);
-            } else {
-                map.addLayer({
-                    id: 'route',
-                    type: 'line',
-                    source: {
-                        type: 'geojson',
-                        data: route.geometry
-                    },
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': '#ff7e5f',
-                        'line-width': 4
-                    }
-                });
-            }
-        });
-}
-
-// Manejar el botón de finalizar
-document.getElementById('stopButton').addEventListener('click', function() {
-    points = []; // Reiniciar los puntos
-    document.getElementById('distanceValue').textContent = 'Distancia total: 0 km';
-    document.getElementById('stopButton').disabled = true;
-
-    if (map.getLayer('route')) {
-        map.removeLayer('route');
-        map.removeSource('route');
-    }
-});
-
-// Controles de mapa
-document.getElementById('zoomIn').addEventListener('click', () => map.zoomIn());
-document.getElementById('zoomOut').addEventListener('click', () => map.zoomOut());
-document.getElementById('tiltUp').addEventListener('click', () => map.easeTo({ pitch: map.getPitch() + 10 }));
-document.getElementById('tiltDown').addEventListener('click', () => map.easeTo({ pitch: map.getPitch() - 10 }));
-document.getElementById('rotateLeft').addEventListener('click', () => map.rotateTo(map.getBearing() - 10));
-document.getElementById('rotateRight').addEventListener('click', () => map.rotateTo(map.getBearing() + 10));
-
-</script>
-
+        document.getElementById('map-thumbnail').src = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${longitude},${latitude},${zoom}/600x400?access_token=pk.eyJ1IjoiY2tueXQiLCJhIjoiY20wNDJ2NHUwMDJodDJxc2g4ZjNxbTh0NCJ9.zKJdloRXLKoWKa-1mq9iwA`;
+    </script>
 </body>
 </html>
+  <script>
+    // Recuperar el valor de la distancia total del almacenamiento local si existe
+    const distanciaTotal = localStorage.getItem('distanciaTotal');
+    if (distanciaTotal) {
+      document.getElementById('kilometros').value = distanciaTotal;
+      localStorage.removeItem('distanciaTotal'); // Limpiar la distancia total después de usarla
+    }
+
+    // Enviar los datos del formulario al servidor
+    document.getElementById('activityForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      
+      const kilometros = document.getElementById('kilometros').value;
+      const imagen = document.getElementById('imagen').files[0];
+      
+      const formData = new FormData();
+      formData.append('kilometros', kilometros);
+      formData.append('imagen', imagen);
+
+      fetch('https://example.com/api/save-activity', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Datos enviados con éxito:', data);
+      })
+      .catch(error => {
+        console.error('Error al enviar los datos:', error);
+      });
+    });
+  </script>
+</body>
+</html>
+
