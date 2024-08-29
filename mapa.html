@@ -76,6 +76,7 @@
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
             display: none;
+            cursor: pointer; /* Hace que el cursor sea una mano al pasar sobre los resultados */
         }
         #search-results div {
             padding: 10px;
@@ -238,14 +239,15 @@ document.getElementById('search-input').addEventListener('input', function() {
     }
 });
 
+var results = [];
+
 function searchPlaces(searchValue) {
     var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + searchValue + '.json?access_token=' + mapboxgl.accessToken;
     fetch(url)
     .then(response => response.json())
     .then(data => {
-        var places = data.features;
-        var results = [];
-        places.forEach(place => {
+        results = [];  // Vacía el array antes de llenarlo de nuevo
+        data.features.forEach(place => {
             results.push({
                 name: place.text,
                 lat: place.geometry.coordinates[1],
@@ -256,28 +258,39 @@ function searchPlaces(searchValue) {
     });
 }
 
+
 function showSearchResults(results) {
     var searchResults = document.getElementById('search-results');
     searchResults.innerHTML = '';
-    results.forEach(result => {
-        var resultHTML = '<div>' + result.name + '</div>';
-        searchResults.appendChild(document.createElement('div')).innerHTML = resultHTML;
-    });
+    if (results.length === 0) {
+        searchResults.textContent = 'Sin resultados';
+    } else {
+        results.forEach((result, index) => {
+            var resultDiv = document.createElement('div');
+            resultDiv.textContent = result.name;
+            resultDiv.setAttribute('data-index', index);
+            searchResults.appendChild(resultDiv);
+        });
+    }
     searchResults.style.display = 'block';
 }
 
+
 document.getElementById('search-results').addEventListener('click', function(event) {
-    var selectedResult = event.target.textContent;
-    var selectedPlace = results.find(result => result.name === selectedResult);
-    if (selectedPlace) {
-        map.flyTo({
-            center: [selectedPlace.lng, selectedPlace.lat],
-            zoom: 15
-        });
+    var index = event.target.getAttribute('data-index');
+    if (index !== null) {
+        var selectedPlace = results[index];
+        if (selectedPlace) {
+            map.flyTo({
+                center: [selectedPlace.lng, selectedPlace.lat],
+                zoom: 15
+            });
+        }
     }
     document.getElementById('search-results').style.display = 'none';
     document.getElementById('search-input').value = '';
 });
+
 </script>
 
 </body>
