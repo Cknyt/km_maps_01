@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
     <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    </head>
     <style>
         body { margin: 0; padding: 0; }
         html, body, #map { height: 100%; }
@@ -85,6 +87,10 @@
         #search-results div:hover {
             background-color: #f0f0f0;
         }
+        #undoButton {
+            background-color: #ffcc00; /* Color amarillo */
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -96,14 +102,14 @@
 </div>
 
 <div class="controls">
-    <button id="zoomIn">Zoom In</button>
-    <button id="zoomOut">Zoom Out</button>
-    <button id="tiltUp">Tilt Up</button>
-    <button id="tiltDown">Tilt Down</button>
-    <button id="rotateLeft">Rotate Left</button>
-    <button id="rotateRight">Rotate Right</button>
-    <button id="undoButton" disabled>Deshacer último punto</button>
-</div>
+    <button id="zoomIn" title="Acercar"><i class="fas fa-search-plus"></i></button>
+    <button id="zoomOut" title="Alejar"><i class="fas fa-search-minus"></i></button>
+    <button id="tiltUp" title="Inclinar hacia arriba"><i class="fas fa-arrow-up"></i></button>
+    <button id="tiltDown" title="Inclinar hacia abajo"><i class="fas fa-arrow-down"></i></button>
+    <button id="rotateLeft" title="Girar a la izquierda"><i class="fas fa-undo-alt"></i></button>
+    <button id="rotateRight" title="Girar a la derecha"><i class="fas fa-redo-alt"></i></button>
+    <button id="undoButton" title="Deshacer último punto" disabled><i class="fas fa-eraser"></i>
+    </div>
 
 <input id="search-input" type="text" placeholder="Buscar localidad...">
 <div id="search-results"></div>
